@@ -21,13 +21,16 @@ class MicroCache
       socket = @server.accept
       if @threadsLimit > @threads.length
         @threads << Thread.new { 
-          loop do
-            request = socket.gets
-            self.handle(socket, request)
+          while !socket.closed?
+            request = socket.gets("\n\r").chomp("\n\r")
+            self.handle(socket, request)            
           end 
+
+          @threads.delete(Thread.current)
+          Thread.kill self
         }
       else
-        socket.print "No free threads left"
+        socket.print("No free threads left", "\n\r")
         socket.close
       end
     end
@@ -57,34 +60,29 @@ class MicroCache
   #Handle commands
   def handle(socket, request)
     request = request.split
-    self.getData(socket, request) if request[0] == 'get'
-    self.setData(request) if request[0] == 'set'
-    self.stats(socket) if request[0] == 'stats'
+    case request[0]
+    when 'get'
+      self.getData(socket, request) 
+    when 'set'
+      self.setData(request) 
+    when 'stats'
+      self.stats(socket) 
+    when 'end'
+      socket.close
+    end
   end
 
   #Set data to storage
   def setData(request)
-    p 'Set data'
     if request.length
       key = request[1]
       data = request[2]
       time = Time.now.to_i + request[3].to_i
 
-      # sizeOfStorage = ObjectSpace.memsize_of(@data)
-      # sizeOfData = ObjectSpace.memsize_of(data)
-
-      # if sizeOfStorage + sizeOfData < @memoryLimit
-      p 'Set key = data'
       @data[key] = data
-      p 'Set Time'
       @expire[time] = [] if @expire[time].nil?
       @expire[time] << key 
       # end
-
-
-      p 'Data been set'
-      p @data
-      p @expire
     end
   end
 
@@ -92,20 +90,20 @@ class MicroCache
   def getData(socket, request)
     unless request[1].nil? 
       key = request[1]
-    
+      
       result = ''
       result = @data[key] unless @data[key].nil?
 
-      socket.print result
+      socket.print(result, "\n\r")
     end
   end
 
   #Return curr unix time, data, data expire time
   def stats(socket)
-    stats = Time.now.to_i + '\n\r\0' + 
-            @data.flatten + '\n\r\0' + 
-            @expire.flatten + '\n\r\0'
-    socket.print stats
+    stats = Time.now.to_i + "\n" + 
+            @data.flatten + "\n" + 
+            @expire.flatten + "\n"
+    socket.print(stats, "\n\r")
   end
 end
 
@@ -113,3 +111,4 @@ end
 #TODO: write memory limit mechanism
 #TODO: write new add string end for socket.write
 #TODO: write waiting mechanism for threads limit
+#TODO: check is socket closed
