@@ -13,7 +13,6 @@ ARGV.each { |arg|
   settings['threads'] = res[1] if res = arg.match(/-threads=(\d+)/)
 }
 
-# p settings
 server = MicroCache.new(settings['port'], settings['memory'], settings['threads'])
 server.listen
 

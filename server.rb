@@ -1,5 +1,4 @@
 require "socket"
-# require "objectspace"
 
 class MicroCache 
   def initialize(port, mem, thr)
@@ -16,6 +15,7 @@ class MicroCache
     }
   end
 
+  #Listen connections
   def listen
     loop do 
       socket = @server.accept
@@ -27,12 +27,13 @@ class MicroCache
           end 
         }
       else
-        socket.print "No free threads"
+        socket.print "No free threads left"
         socket.close
       end
     end
   end
 
+  #Mechanism of data expiring
   def clear
     loop do
       time = Time.now.to_i
@@ -53,13 +54,15 @@ class MicroCache
     end 
   end
 
+  #Handle commands
   def handle(socket, request)
     request = request.split
-    p request
-    self.setData(request) if request[0] == 'set'
     self.getData(socket, request) if request[0] == 'get'
+    self.setData(request) if request[0] == 'set'
+    self.stats(socket) if request[0] == 'stats'
   end
 
+  #Set data to storage
   def setData(request)
     p 'Set data'
     if request.length
@@ -85,6 +88,7 @@ class MicroCache
     end
   end
 
+  #Return data by key to socket
   def getData(socket, request)
     unless request[1].nil? 
       key = request[1]
@@ -96,9 +100,16 @@ class MicroCache
     end
   end
 
+  #Return curr unix time, data, data expire time
   def stats(socket)
-    socket.print Time.now.to_i
-    socket.print @data.flatten
-    socket.print @expire.flatten
+    stats = Time.now.to_i + '\n\r\0' + 
+            @data.flatten + '\n\r\0' + 
+            @expire.flatten + '\n\r\0'
+    socket.print stats
   end
 end
+
+#TODO: write new algorithm for clear memcache data
+#TODO: write memory limit mechanism
+#TODO: write new add string end for socket.write
+#TODO: write waiting mechanism for threads limit
