@@ -1,7 +1,7 @@
 require "socket"
 
 class MicroCache 
-  def initialize(port, mem, thr)
+  def initialize(port, mem, thr, autoclear = false)
     @port         = port.to_i
     @memoryLimit  = mem.to_i
     @threadsLimit = thr.to_i
@@ -10,9 +10,11 @@ class MicroCache
     @expire       = {}
 
     @server = TCPServer.new(@port)
-    Thread.new {
-      self.clear
-    }
+    if autoclear
+      Thread.new {
+        self.clear
+      }
+    end
   end
 
   #Listen connections
@@ -39,22 +41,15 @@ class MicroCache
   #Mechanism of data expiring
   def clear
     loop do
-      time = Time.now.to_i
-      unless @expire[time].nil?
-        p time
-        keys = @expire[time] 
-        keys.each { |key|
-          @data.delete(key)
-          p "Remove key " + key
-        }
+      @data.each { |key, val|
+        if val['time'] <= Time.now.to_i
+          @data.delete(key) 
+          p 'Remove: ' + key
+        end
+      }
 
-        @expire.delete(time)
-        p 'Data'
-        p @data
-      end
-
-      sleep(0.1)
-    end 
+      sleep(5) 
+    end
   end
 
   #Handle commands
@@ -79,9 +74,9 @@ class MicroCache
       data = request[2]
       time = Time.now.to_i + request[3].to_i
 
-      @data[key] = data
-      @expire[time] = [] if @expire[time].nil?
-      @expire[time] << key 
+      @data[key] = {'data' => data, 'time' => time}
+      # @expire[time] = [] if @expire[time].nil?
+      # @expire[time] << key 
       # end
     end
   end
@@ -90,9 +85,16 @@ class MicroCache
   def getData(socket, request)
     unless request[1].nil? 
       key = request[1]
-      
       result = ''
-      result = @data[key] unless @data[key].nil?
+
+      #lazy expire
+      unless @data[key].nil?
+        if @data[key]['time'] > Time.now.to_i
+          result = @data[key]['data']  
+        else
+          @data.delete(key)
+        end
+      end
 
       socket.print(result, "\n\r")
     end
@@ -107,7 +109,6 @@ class MicroCache
   end
 end
 
-#TODO: write new algorithm for clear memcache data
 #TODO: write memory limit mechanism
 #TODO: write new add string end for socket.write
 #TODO: write waiting mechanism for threads limit
