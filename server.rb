@@ -75,9 +75,6 @@ class MicroCache
       time = Time.now.to_i + request[3].to_i
 
       @data[key] = {'data' => data, 'time' => time}
-      # @expire[time] = [] if @expire[time].nil?
-      # @expire[time] << key 
-      # end
     end
   end
 
@@ -110,6 +107,6 @@ class MicroCache
 end
 
 #TODO: write memory limit mechanism
-#TODO: write new add string end for socket.write
+  #TODO: write new add string end for socket.write
 #TODO: write waiting mechanism for threads limit
 #TODO: check is socket closed

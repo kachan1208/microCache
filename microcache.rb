@@ -34,10 +34,3 @@ class MicroCacheClient
     @client.close
   end
 end
-
-client = MicroCacheClient.new('localhost', 11211)
-client.set('Test', 'Hello Wosdkfjhsdlf sdlfjk haldkjfhalkdjf alskdjfhrld', 10)
-p client.get('Test')
-p client.get('Test')
-p client.get('est')
-client.close
